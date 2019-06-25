@@ -1,0 +1,25 @@
+{
+  "name": "serie_nodejs",
+  "version": "1.0.0",
+  "description": "crud and relationships mongodb.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "dev": "nodemon ./src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarcosSantosDev/serie_nodejs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MarcosSantosDev/serie_nodejs/issues"
+  },
+  "homepage": "https://github.com/MarcosSantosDev/serie_nodejs#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  }
+}
