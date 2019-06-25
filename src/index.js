@@ -1,13 +1,11 @@
 const express = require('express');
-const bodyparser = require('body-parser');
+const bodyParser = require('body-parser');
 
 const app = express();
 
-app.use(bodyparser.json());
-app.use(bodyparser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.get('/', (req, res) => {
-    res.send('Hello World!');
-})
+require('./controlers/authController')(app);
 
 app.listen(3333);
