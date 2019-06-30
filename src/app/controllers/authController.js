@@ -1,6 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const mailer = require('../../modules/mailer');
 
 const User = require('../models/users');
 const authConfig = require('../../config/auth');
@@ -15,19 +17,32 @@ function generateToken(params = {}) {
 
 router.post('/register', async (req, res) => {
 
-    const { email } = req.body;
+    const {
+        email
+    } = req.body;
 
     try {
-        if(await User.findOne({ email }))
-            return res.status(400).send({ error: 'Email already exists.' });
+        if (await User.findOne({
+                email
+            }))
+            return res.status(400).send({
+                error: 'Email already exists.'
+            });
 
         const user = await User.create(req.body);
 
         user.password = undefined;
 
-        return res.send({ user, token: generateToken({ id: user.id }) });
+        return res.send({
+            user,
+            token: generateToken({
+                id: user.id
+            })
+        });
     } catch (err) {
-        return res.status(400).send({ error: 'Register Failed.' })
+        return res.status(400).send({
+            error: 'Register Failed.'
+        })
     }
 });
 
@@ -37,7 +52,9 @@ router.post('/authenticate', async (req, res) => {
         password
     } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({
+        email
+    }).select('+password');
 
     const passwordCompare = await bcrypt.compare(password, user.password);
 
@@ -55,8 +72,105 @@ router.post('/authenticate', async (req, res) => {
 
     res.send({
         user,
-        token: generateToken({ id: user.id })
+        token: generateToken({
+            id: user.id
+        })
     });
+});
+
+router.post('/forgot_password', async (req, res) => {
+    const {
+        email
+    } = req.body;
+
+    try {
+        const user = await User.findOne({
+            email
+        });
+
+        if (!user)
+            return res
+                .status(400)
+                .send({
+                    error: 'User not found'
+                });
+
+        const token = crypto.randomBytes(20).toString('hex');
+
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+
+        await User.findByIdAndUpdate(user.id, {
+            '$set': {
+                passwordResetToken: token,
+                passwordResetExpires: now,
+            }
+        });
+
+        mailer.sendMail({
+            to: email,
+            from: 'marcosadriano034@gmail.com',
+            template: '/auth/forgot_password',
+            context: {
+                token
+            },
+        }, (err) => {
+            console.log(err)
+            if (err)
+                return res.status(400).send({
+                    error: 'Cannot send forgot password email'
+                });
+
+            return res.send();
+        });
+    } catch (err) {
+        res
+            .status(400)
+            .send({
+                error: 'Erro on forgot, try again'
+            })
+    }
+});
+
+router.post('/reset_password', async (req, res) => {
+    const {
+        email,
+        token,
+        password
+    } = req.body;
+
+    try {
+        const user = await User.findOne({ email })
+            .select('+passwordResetToken passwordResetExpires');
+
+        if (!user)
+            return res.status(400).send({
+                error: 'User not found.'
+            });
+
+        if (token !== user.passwordResetToken)
+            return res.status(400).send({
+                error: 'Token invalid.'
+            });
+
+        const now = new Date();
+
+        if (now > user.passwordResetExpires)
+            return res.status(400).send({
+                error: 'Token expired, generate an new one.'
+            });
+
+        user.password = password;
+
+        await user.save();
+
+        res.send();
+    } catch (err) {
+        res.status(400).send({
+            error: 'Cannot reset password, try again.'
+        })
+    }
+
 });
 
 module.exports = app => app.use('/auth', router);
